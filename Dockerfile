@@ -16,6 +16,7 @@ RUN apt-get update && apt-get install -y \
     libxext6 \
     libxrender-dev \
     libglib2.0-0 \
+    libsndfile1 \
     wget \
     curl \
     && rm -rf /var/lib/apt/lists/*
@@ -31,7 +32,7 @@ RUN pip install --upgrade pip setuptools wheel
 # Install PyTorch with CUDA 12.1 first
 RUN pip install torch==2.3.0 torchvision==0.18.0 torchaudio==2.3.0 --index-url https://download.pytorch.org/whl/cu121
 
-# Install core ML dependencies manually (skip repo requirements.txt)
+# Install core ML dependencies
 RUN pip install \
     transformers==4.40.0 \
     accelerate==0.30.0 \
@@ -40,12 +41,11 @@ RUN pip install \
     safetensors==0.4.3 \
     tokenizers==0.19.1
 
-# Install audio dependencies
-RUN pip install \
-    openai-whisper==20231117 \
-    soundfile==0.12.1 \
-    librosa==0.10.1 \
-    scipy==1.13.0
+# Install audio dependencies (fixed versions)
+RUN pip install soundfile==0.12.1
+RUN pip install librosa==0.10.1
+RUN pip install openai-whisper
+RUN pip install scipy==1.13.0
 
 # Install video/image dependencies
 RUN pip install \
