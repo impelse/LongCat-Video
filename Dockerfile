@@ -26,39 +26,53 @@ RUN ln -sf /usr/bin/python3.10 /usr/bin/python3 && \
     ln -sf /usr/bin/pip3 /usr/bin/pip
 
 # Upgrade pip
-RUN pip install --upgrade pip
+RUN pip install --upgrade pip setuptools wheel
 
-# Install PyTorch with CUDA 12.1
+# Install PyTorch with CUDA 12.1 first
 RUN pip install torch==2.3.0 torchvision==0.18.0 torchaudio==2.3.0 --index-url https://download.pytorch.org/whl/cu121
+
+# Install core ML dependencies manually (skip repo requirements.txt)
+RUN pip install \
+    transformers==4.40.0 \
+    accelerate==0.30.0 \
+    diffusers==0.27.2 \
+    huggingface_hub==0.23.0 \
+    safetensors==0.4.3 \
+    tokenizers==0.19.1
+
+# Install audio dependencies
+RUN pip install \
+    openai-whisper==20231117 \
+    soundfile==0.12.1 \
+    librosa==0.10.1 \
+    scipy==1.13.0
+
+# Install video/image dependencies
+RUN pip install \
+    Pillow==10.3.0 \
+    opencv-python-headless==4.9.0.80 \
+    ffmpeg-python==0.2.0 \
+    imageio==2.34.1 \
+    imageio-ffmpeg==0.5.1
+
+# Install RunPod SDK
+RUN pip install runpod==1.7.0
+
+# Install other utilities
+RUN pip install \
+    numpy==1.26.4 \
+    einops==0.7.0 \
+    omegaconf==2.3.0 \
+    tqdm==4.66.4 \
+    requests==2.31.0
 
 # Copy repo contents
 WORKDIR /app
 COPY . /app
 
-# Install Python dependencies
-RUN pip install -r requirements.txt
-
-# Install additional dependencies for RunPod handler
-RUN pip install \
-    runpod==1.7.0 \
-    huggingface_hub \
-    transformers \
-    accelerate \
-    diffusers \
-    openai-whisper \
-    ffmpeg-python \
-    Pillow \
-    numpy \
-    scipy \
-    soundfile \
-    librosa
-
 # Create necessary directories
 RUN mkdir -p /runpod-volume/huggingface \
     && mkdir -p /runpod-volume/outputs \
-    && mkdir -p /app/weights
-
-# Copy handler
-COPY handler.py /app/handler.py
+    && mkdir -p /runpod-volume/weights
 
 CMD ["python", "-u", "handler.py"]
