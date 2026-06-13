@@ -1,0 +1,14 @@
+{
+    "input": {
+        "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/14/Gatto_europeo4.jpg/320px-Gatto_europeo4.jpg",
+        "wav_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+        "prompt": "A person talking naturally and clearly",
+        "width": 720,
+        "height": 1280,
+        "model_type": "avatar-v1.5",
+        "use_distill": true,
+        "use_int8": true,
+        "audio_cfg": 4.0,
+        "network_volume": true
+    }
+}
