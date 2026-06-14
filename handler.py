@@ -20,8 +20,16 @@ LOCK_FILE = "/runpod-volume/.download_lock"
 LONGCAT_VIDEO_WEIGHTS = f"{WEIGHTS_DIR}/LongCat-Video"
 LONGCAT_AVATAR_WEIGHTS = f"{WEIGHTS_DIR}/LongCat-Avatar"
 
+# Force ALL huggingface temp files to network volume
+os.environ["HF_HOME"] = "/runpod-volume/.cache/huggingface"
+os.environ["HF_HUB_CACHE"] = "/runpod-volume/.cache/huggingface"
+os.environ["HUGGINGFACE_HUB_CACHE"] = "/runpod-volume/.cache/huggingface"
+os.environ["TMPDIR"] = "/runpod-volume/tmp"
+
 os.makedirs(WEIGHTS_DIR, exist_ok=True)
 os.makedirs(OUTPUT_DIR, exist_ok=True)
+os.makedirs("/runpod-volume/.cache/huggingface", exist_ok=True)
+os.makedirs("/runpod-volume/tmp", exist_ok=True)
 
 
 def get_disk_usage_gb(path):
