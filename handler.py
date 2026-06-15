@@ -14,22 +14,22 @@ import time
 from pathlib import Path
 
 # Paths
-WEIGHTS_DIR = "/runpod-volume/weights"
-OUTPUT_DIR = "/runpod-volume/outputs"
-LOCK_FILE = "/runpod-volume/.download_lock"
+WEIGHTS_DIR = "/workspace/weights"
+OUTPUT_DIR = "/workspace/outputs"
+LOCK_FILE = "/workspace/.download_lock"
 LONGCAT_VIDEO_WEIGHTS = f"{WEIGHTS_DIR}/LongCat-Video"
 LONGCAT_AVATAR_WEIGHTS = f"{WEIGHTS_DIR}/LongCat-Avatar"
 
 # Force ALL huggingface temp files to network volume
-os.environ["HF_HOME"] = "/runpod-volume/.cache/huggingface"
-os.environ["HF_HUB_CACHE"] = "/runpod-volume/.cache/huggingface"
-os.environ["HUGGINGFACE_HUB_CACHE"] = "/runpod-volume/.cache/huggingface"
-os.environ["TMPDIR"] = "/runpod-volume/tmp"
+os.environ["HF_HOME"] = "/workspace/.cache/huggingface"
+os.environ["HF_HUB_CACHE"] = "/workspace/.cache/huggingface"
+os.environ["HUGGINGFACE_HUB_CACHE"] = "/workspace/.cache/huggingface"
+os.environ["TMPDIR"] = "/workspace/tmp"
 
 os.makedirs(WEIGHTS_DIR, exist_ok=True)
 os.makedirs(OUTPUT_DIR, exist_ok=True)
-os.makedirs("/runpod-volume/.cache/huggingface", exist_ok=True)
-os.makedirs("/runpod-volume/tmp", exist_ok=True)
+os.makedirs("/workspace/.cache/huggingface", exist_ok=True)
+os.makedirs("/workspace/tmp", exist_ok=True)
 
 
 def get_disk_usage_gb(path):
@@ -52,7 +52,7 @@ def clear_hf_cache():
             print(f"Cleared HF cache at {hf_cache}")
 
 
-def wait_for_lock(timeout=1800):
+def wait_for_lock(timeout=10800):
     """Wait if another worker is downloading weights."""
     waited = 0
     while os.path.exists(LOCK_FILE) and waited < timeout:
@@ -64,13 +64,38 @@ def wait_for_lock(timeout=1800):
         os.remove(LOCK_FILE)
 
 
+def folder_size_gb(path):
+    """Returns folder size in GB."""
+    try:
+        result = subprocess.run(["du", "-sb", path], capture_output=True, text=True)
+        if result.returncode == 0:
+            bytes_used = int(result.stdout.split()[0])
+            return bytes_used / (1024 ** 3)
+    except:
+        pass
+    return 0
+
+
+def weights_already_downloaded(path, min_size_gb):
+    """Check if weights folder exists and has enough data — skip re-download."""
+    marker = Path(f"{path}/.complete")
+    if marker.exists():
+        return True
+    size = folder_size_gb(path)
+    if size >= min_size_gb:
+        print(f"Folder {path} already has {size:.1f}GB — marking complete, skipping download.")
+        marker.touch()
+        return True
+    return False
+
+
 def download_weights():
     """Download model weights — storage optimized, one file at a time."""
 
-    video_done = Path(f"{LONGCAT_VIDEO_WEIGHTS}/.complete")
-    avatar_done = Path(f"{LONGCAT_AVATAR_WEIGHTS}/.complete")
+    video_done = weights_already_downloaded(LONGCAT_VIDEO_WEIGHTS, min_size_gb=8)
+    avatar_done = weights_already_downloaded(LONGCAT_AVATAR_WEIGHTS, min_size_gb=8)
 
-    if video_done.exists() and avatar_done.exists():
+    if video_done and avatar_done:
         print("Weights already downloaded, skipping.")
         return
 
@@ -119,7 +144,7 @@ def download_weights():
                 # Clean HF cache after each pattern to save space
                 clear_hf_cache()
 
-                used = get_disk_usage_gb("/runpod-volume")
+                used = get_disk_usage_gb("/workspace")
                 print(f"Disk used: {used}GB")
 
             video_done.touch()
@@ -142,7 +167,7 @@ def download_weights():
             # Clean cache after download
             clear_hf_cache()
 
-            used = get_disk_usage_gb("/runpod-volume")
+            used = get_disk_usage_gb("/workspace")
             print(f"Disk used after avatar download: {used}GB")
 
             avatar_done.touch()
@@ -207,6 +232,16 @@ def handler(job):
         download_weights()
     except Exception as e:
         return {"error": f"Failed to download weights: {str(e)}"}
+
+    # Download-only mode — just cache weights and exit
+    if job_input.get("download_only"):
+        used = get_disk_usage_gb("/workspace")
+        return {
+            "status": "weights downloaded and cached",
+            "disk_used_gb": used,
+            "video_weights": str(Path(f"{LONGCAT_VIDEO_WEIGHTS}/.complete").exists()),
+            "avatar_weights": str(Path(f"{LONGCAT_AVATAR_WEIGHTS}/.complete").exists())
+        }
 
     # Parse inputs
     prompt = job_input.get("prompt", "A person talking naturally and clearly")
