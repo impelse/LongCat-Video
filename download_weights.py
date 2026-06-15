@@ -1,6 +1,6 @@
 """
 One-off script to pre-download LongCat weights to network volume.
-Run this ONCE as a RunPod job before using the main handler.
+Run this ONCE as a RunPod job before using the main handler. Raul
 """
 
 import os
